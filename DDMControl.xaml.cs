@@ -34,45 +34,68 @@ namespace DDM.ExcelAddIn
 
                 var ddm = ddmCalculator.Calculate(dividends);
 
-                WriteDDMValues(ddm);
-
-                if (writeDividends.IsChecked == true)
-                {
-                    WriteDividendPayouts(dividends);
-                }
+                WriteDDMValues(ddm, dividends);
             }
         }
 
-
-        private void WriteDDMValues(DDM ddm)
+        internal void WriteDDMValues(DDM ddm, List<Dividend> dividends)
         {
             var xlApp = (Microsoft.Office.Interop.Excel.Application)System.Runtime.InteropServices.Marshal.GetActiveObject("Excel.Application");
             var xlWorkbook = xlApp.ActiveWorkbook;
             var xlWorksheet = xlWorkbook.ActiveSheet;
 
-            ((Range)xlWorksheet.Cells[1, 1]).Value2 = "Ticker";
-            ((Range)xlWorksheet.Cells[1, 2]).Value = ticker;
+            Range selectedRange = xlApp.ActiveWindow.RangeSelection;
 
-            ((Range)xlWorksheet.Cells[2, 1]).Value = "P";
-            xlWorksheet.Cells[2, 2] = ddm.P;
+            var extraRows = writeDividends.IsChecked == true ? dividends.Count : 0;
 
-            xlWorksheet.Cells[2, 1] = "D";
-            xlWorksheet.Cells[2, 2] = ddm.D;
-
-            xlWorksheet.Cells[3, 1] = "R";
-            xlWorksheet.Cells[3, 2].Value2 = ddm.R;
-
-            xlWorksheet.Cells[4, 1].Value = "G";
-            xlWorksheet.Cells[4, 2].Value = ddm.G;
-
-
-        }
-
-        private void WriteDividendPayouts(List<Dividend> dividends)
-        {
-            foreach (var dividend in dividends)
+            if (selectedRange.Rows.Count != 5 + extraRows || selectedRange.Columns.Count != 2)
             {
+                MessageBoxResult mbResult;
 
+                do
+                {
+                    mbResult = MessageBox.Show(string.Format("Select a range with size {0}:{1} to write result", 5 + extraRows, 2), "Select range", MessageBoxButton.OKCancel, MessageBoxImage.Information);
+                    selectedRange = xlApp.ActiveWindow.RangeSelection;
+
+                    if (mbResult == MessageBoxResult.OK && selectedRange.Rows.Count == (5 + extraRows) && selectedRange.Columns.Count == 2)
+                        break;
+                }
+                while (mbResult != MessageBoxResult.Cancel);
+
+                if (mbResult == MessageBoxResult.Cancel)
+                    return;
+            }
+
+            if (selectedRange.Rows.Count == 5 + extraRows && selectedRange.Columns.Count == 2)
+            {
+                ((Range)selectedRange.Cells[1, 1]).Value = "Ticker";
+                ((Range)selectedRange.Cells[1, 2]).Value = ticker;
+
+                ((Range)selectedRange.Cells[2, 1]).Value = "P";
+                selectedRange.Cells[2, 2] = string.Format("={0}/({1}-{2})", selectedRange.Cells[3, 2].Address, selectedRange.Cells[4, 2].Address, selectedRange.Cells[5, 2].Address);
+
+                selectedRange.Cells[3, 1] = "D";
+                selectedRange.Cells[3, 2] = ddm.D;
+
+                selectedRange.Cells[4, 1] = "r";
+                selectedRange.Cells[4, 2].Value2 = ddm.R;
+                selectedRange.Cells[4, 2].NumberFormat = "#.##%";
+
+                selectedRange.Cells[5, 1].Value = "g";
+                selectedRange.Cells[5, 2].Value = ddm.G;
+                selectedRange.Cells[5, 2].NumberFormat = "#.##%";
+
+                if (writeDividends.IsChecked == true)
+                {
+                    int row = 6;
+
+                    foreach (var dividend in dividends)
+                    {
+                        selectedRange.Cells[row, 1].Value = dividend.Date;
+                        selectedRange.Cells[row, 2].Value = dividend.Amount;
+                        row++;
+                    }
+                }
             }
         }
     }

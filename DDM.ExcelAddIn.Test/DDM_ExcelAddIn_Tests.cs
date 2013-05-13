@@ -13,7 +13,6 @@ namespace DDM.ExcelAddIn.Test
             var response = DividendLoader.GetResponse("http://www.blankwebsite.com/");
 
             Assert.IsFalse(string.IsNullOrEmpty(response));
-
         }
 
         [TestMethod]
@@ -78,6 +77,32 @@ namespace DDM.ExcelAddIn.Test
             Assert.AreEqual(0m, result.G);
             Assert.AreEqual(r, result.R);
             Assert.AreEqual(20m, result.P);
+        }
+
+
+        [TestMethod]
+        public void WriteDDMValues_Test()
+        {
+            var target = new DDMControl();
+
+            var ddm = new DDM
+            {
+                D = 2,
+                G = 0.1m,
+                R = 0.12m,
+            };
+
+            var xlApp = (Microsoft.Office.Interop.Excel.Application)System.Runtime.InteropServices.Marshal.GetActiveObject("Excel.Application");
+            var xlWorkbook = xlApp.ActiveWorkbook;
+            var xlWorksheet = xlWorkbook.ActiveSheet;
+
+            target.WriteDDMValues(ddm, new List<Dividend>());
+
+            Assert.IsTrue(Math.Round(xlWorksheet.Cells[2, 2].Value, 2) == (double)ddm.P);
+
+            Assert.IsTrue(xlWorksheet.Cells[3, 2].Value == (double)ddm.D);
+            Assert.IsTrue(xlWorksheet.Cells[4, 2].Value == (double)ddm.R);
+            Assert.IsTrue(xlWorksheet.Cells[5, 2].Value == (double)ddm.G);
         }
     }
 }
